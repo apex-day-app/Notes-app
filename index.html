@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>नोट्स - फोल्डर</title>
+    <!-- Font Awesome 6 (Free Icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* COMMENT 1 : RESET AND BASE STYLES - NO CARDS, CLEAN BACKGROUND */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #f0ede8;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            padding: 8px;
+            min-height: 100vh;
+        }
+
+        /* Main app container - transparent, no card */
+        .app {
+            max-width: 550px;
+            margin: 0 auto;
+            background: transparent;
+            overflow: visible;
+        }
+
+        /* COMMENT 2 : FOLDER SCROLL BAR - THIN GRAY STRIP, NO ICONS, NO BORDERS */
+        .folder-scroll {
+            background: #e5e0d8;
+            padding: 6px 12px;
+            margin-bottom: 12px;
+            overflow-x: auto;
+            white-space: nowrap;
+            display: flex;
+            gap: 20px;
+            scrollbar-width: thin;
+            border-radius: 0;
+        }
+
+        /* Folder items - just text name, no icon, no border, no background */
+        .folder-item {
+            display: inline-flex;
+            align-items: center;
+            background: transparent;
+            padding: 2px 0;
+            font-size: 0.85rem;
+            font-weight: 400;
+            color: #3a3229;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+        }
+        .folder-item.active {
+            font-weight: 600;
+            color: #1a1a1a;
+            border-bottom: 1.5px solid #1a1a1a;
+            padding-bottom: 2px;
+        }
+
+        /* COMMENT 3 : NOTES LIST - NO HEADER, NO EMPTY MESSAGE */
+        .notes-container {
+            padding: 0;
+        }
+        .notes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .note-item {
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid #e8e0d5;
+            padding: 12px 14px;
+            cursor: pointer;
+        }
+        /* Empty note style - slightly different to indicate it's the always-empty note */
+        .note-item.empty-note {
+            background: #fefaf5;
+            border: 1px dashed #d4c4b0;
+            opacity: 0.85;
+        }
+        .note-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c241a;
+            margin-bottom: 6px;
+        }
+        .empty-note .note-title {
+            color: #a08c74;
+            font-weight: 500;
+        }
+        .note-preview {
+            font-size: 0.7rem;
+            color: #6b5340;
+            line-height: 1.35;
+            white-space: pre-wrap;
+            margin-bottom: 10px;
+            border-left: 2px solid #ffe0b5;
+            padding-left: 10px;
+        }
+        .empty-note .note-preview {
+            color: #b8a48c;
+            border-left-color: #ecdbba;
+        }
+        .note-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        .note-footer button {
+            background: none;
+            border: none;
+            font-size: 0.7rem;
+            color: #b97f44;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 30px;
+            cursor: pointer;
+            background: #f7f3ec;
+        }
+        .note-footer button i { font-size: 0.7rem; }
+
+        /* COMMENT 4 : FULLSCREEN MODAL FOR NOTES (OPENS FULL SCREEN, NOT WINDOW) */
+        .fullscreen-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .fullscreen-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+        .fullscreen-header h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #2c241a;
+        }
+        .fullscreen-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #8b6946;
+        }
+        .fullscreen-content {
+            font-size: 1rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #2c241a;
+            flex: 1;
+        }
+        /* Fullscreen editor mode when empty note is opened */
+        .fullscreen-editor textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            font-size: 1rem;
+            line-height: 1.5;
+            border: 1px solid #ddd;
+            border-radius: 16px;
+            font-family: inherit;
+            margin-top: 12px;
+        }
+        
+        .fullscreen-header input {
+    font-size: 1.2rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    width: 70%;
+    outline: none;
+    border-bottom: 1px solid #ddd;
+    padding: 4px 0;
+}
+.fullscreen-header input:focus {
+    border-bottom-color: #ffd966;
+}
+
+        /* COMMENT 5 : EDIT MODAL (SMALL POPUP) */
+        .modal-mask {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: white;
+            width: 85%;
+            max-width: 350px;
+            border-radius: 28px;
+            padding: 20px;
+        }
+        .modal-card h3 { font-size: 1rem; margin-bottom: 12px; }
+        .modal-card h3 i { margin-right: 6px; }
+        .modal-card input, .modal-card textarea {
+            width: 100%;
+            margin: 8px 0;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 12px;
+        }
+        .modal-actions button {
+            padding: 6px 16px;
+            border-radius: 30px;
+            border: none;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .toast {
+            position: fixed;
+            bottom: 15px;
+            left: 15px;
+            background: #2c3e2f;
+            color: white;
+            padding: 5px 14px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            z-index: 1100;
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <!-- COMMENT 6 : FOLDER NAVIGATION - ONLY NAMES ON GRAY STRIP, NO ICONS -->
+    <div id="foldersList" class="folder-scroll"></div>
+
+    <!-- COMMENT 7 : NOTES AREA - NO HEADER, ALWAYS HAS ONE EMPTY NOTE -->
+    <div class="notes-container">
+        <div id="notesListArea" class="notes-list"></div>
+    </div>
+</div>
+
+<script>
+    // COMMENT 8 : LOCAL STORAGE INITIALIZATION - PRESERVES ALL OLD DATA
+    let folders = [];
+    let notes = [];
+    let currentFolderId = null;
+
+    // Special ID for the always-present empty note per folder
+    // We store empty note IDs as: empty_{folderId}
+    function getEmptyNoteId(folderId) {
+        return 'empty_' + folderId;
+    }
+
+    function isEmptyNote(note) {
+        return note.id && note.id.toString().startsWith('empty_');
+    }
+
+    // Ensure every folder has exactly one empty note (always stays on top)
+function ensureEmptyNoteForAllFolders() {
+    folders.forEach(folder => {
+        const emptyId = getEmptyNoteId(folder.id);
+        const existingEmpty = notes.find(n => n.id === emptyId);
+        if (!existingEmpty) {
+            notes.push({
+                id: emptyId,
+                folderId: folder.id,
+                title: "नया नोट",
+                content: "",
+                isEmpty: true
+            });
+        }
+    });
+    // Clean up empty notes for deleted folders
+    notes = notes.filter(note => {
+        if (note.id && note.id.toString().startsWith('empty_')) {
+            const folderId = note.id.toString().replace('empty_', '');
+            return folders.some(f => f.id === folderId);
+        }
+        return true;
+    });
+}
+
+    function loadFromLocal() {
+        const rawFolders = localStorage.getItem('compact_notes_folders');
+        const rawNotes = localStorage.getItem('compact_notes_notes');
+        if(rawFolders) folders = JSON.parse(rawFolders);
+        else folders = [{ id: 'f1', name: 'मुख्य' }];
+        if(rawNotes) notes = JSON.parse(rawNotes);
+        else notes = [];
+
+        if(folders.length && !currentFolderId) currentFolderId = folders[0].id;
+        else if(folders.length === 0) {
+            folders.push({ id: 'f1', name: 'मुख्य' });
+            currentFolderId = 'f1';
+        }
+        if(!folders.find(f => f.id === currentFolderId)) currentFolderId = folders[0]?.id;
+        
+        // Ensure empty notes exist for all folders
+        ensureEmptyNoteForAllFolders();
+        saveToLocal();
+    }
+    
+    function saveToLocal() {
+        localStorage.setItem('compact_notes_folders', JSON.stringify(folders));
+        localStorage.setItem('compact_notes_notes', JSON.stringify(notes));
+    }
+
+    function escapeHtml(str) {
+        if(!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if(m === '&') return '&amp;'; if(m === '<') return '&lt;'; if(m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    function showToast(msg) {
+        let t = document.querySelector('.toast');
+        if(t) t.remove();
+        let div = document.createElement('div');
+        div.className = 'toast';
+        div.innerText = msg;
+        document.body.appendChild(div);
+        setTimeout(() => div.remove(), 1600);
+    }
+
+    // COMMENT 9 : RENDER FOLDERS (with + button inside)
+function renderFolders() {
+    const container = document.getElementById('foldersList');
+    container.innerHTML = '';
+    folders.forEach(folder => {
+        const folderSpan = document.createElement('span');
+        folderSpan.className = `folder-item ${currentFolderId === folder.id ? 'active' : ''}`;
+        folderSpan.innerText = folder.name;
+        folderSpan.addEventListener('click', (e) => {
+            currentFolderId = folder.id;
+            fullRender();
+        });
+        container.appendChild(folderSpan);
+    });
+    
+    // Add + button at the end of folders
+    const addBtn = document.createElement('span');
+    addBtn.innerText = '+';
+    addBtn.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; background: transparent; padding: 2px 8px; font-size: 1rem; cursor: pointer; color: #5c472f; font-weight: 600;';
+    addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        createNewFolder();
+    });
+    container.appendChild(addBtn);
+}
+
+    // COMMENT 10 : RENDER NOTES - EMPTY NOTE WITH TITLE + TEXTAREA
+function renderNotes() {
+    const container = document.getElementById('notesListArea');
+    let folderNotes = notes.filter(n => n.folderId === currentFolderId);
+    
+    // Sort: empty note first, then regular notes (newer last)
+    folderNotes.sort((a, b) => {
+        if (isEmptyNote(a) && !isEmptyNote(b)) return -1;
+        if (!isEmptyNote(a) && isEmptyNote(b)) return 1;
+        return 0;
+    });
+    
+    container.innerHTML = '';
+    folderNotes.forEach(note => {
+        const isEmpty = isEmptyNote(note);
+        let preview = "";
+        if (!isEmpty && note.content) {
+            const lines = (note.content || "").split(/\r?\n/);
+            if (lines.length === 1) preview = lines[0].substring(0, 70);
+            else if (lines.length >= 2) preview = (lines[0] + " " + lines[1]).substring(0, 75);
+            else preview = (note.content || "").substring(0, 70);
+            if (preview.length > 72) preview = preview.slice(0, 70) + "...";
+            if (!preview) preview = "(खाली)";
+        }
+        
+        const card = document.createElement('div');
+        card.className = `note-item ${isEmpty ? 'empty-note' : ''}`;
+        
+        if (isEmpty) {
+    const uniqueId = note.id;
+    card.innerHTML = `
+        <div class="note-title" style="margin-bottom:8px;">📝 नया नोट लिखें</div>
+        <input type="text" id="emptyNoteTitle_${uniqueId}" placeholder="शीर्षक (वैकल्पिक)" style="width:100%; padding:8px; border-radius:12px; border:1px solid #d4c4b0; font-size:0.8rem; font-family:inherit; margin-bottom:8px;">
+        <textarea id="emptyNoteText_${uniqueId}" placeholder="यहाँ टेक्स्ट पेस्ट करें या लिखें... (Ctrl+Enter से सेव)" style="width:100%; min-height:80px; padding:8px; border-radius:12px; border:1px solid #d4c4b0; font-size:0.8rem; font-family:inherit; margin-bottom:8px;"></textarea>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button class="save-empty-note-btn" data-id="${uniqueId}" style="background:#ffd966; border:none; padding:6px 16px; border-radius:30px; font-size:0.7rem; cursor:pointer;"><i class="fas fa-save"></i> सेव</button>
+            <button class="paste-to-empty-btn" data-id="${uniqueId}" style="background:#e0d6c8; border:none; padding:6px 16px; border-radius:30px; font-size:0.7rem; cursor:pointer;"><i class="fas fa-paste"></i> पेस्ट</button>
+        </div>
+    `;
+    
+    // Add Ctrl+Enter save functionality
+    setTimeout(() => {
+        const textarea = document.getElementById(`emptyNoteText_${uniqueId}`);
+        const titleInputElem = document.getElementById(`emptyNoteTitle_${uniqueId}`);
+        if (textarea) {
+            textarea.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    const saveBtn = card.querySelector('.save-empty-note-btn');
+                    if (saveBtn) saveBtn.click();
+                }
+            });
+        }
+        if (titleInputElem) {
+            titleInputElem.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    const saveBtn = card.querySelector('.save-empty-note-btn');
+                    if (saveBtn) saveBtn.click();
+                }
+            });
+        }
+    }, 10);
+}
+        
+         else {
+            // Regular note
+            card.innerHTML = `
+                <div class="note-title">${escapeHtml(note.title || "बिना शीर्षक")}</div>
+                <div class="note-preview">${escapeHtml(preview)}</div>
+                <div class="note-footer">
+                    <button class="copy-note-btn" data-id="${note.id}"><i class="fas fa-copy"></i> कॉपी</button>
+                    <button class="edit-note-btn" data-id="${note.id}"><i class="fas fa-edit"></i></button>
+                    <button class="delete-note-btn" data-id="${note.id}"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+        }
+        
+        // Only regular notes open fullscreen on tap
+        if (!isEmpty) {
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.copy-note-btn') || e.target.closest('.edit-note-btn') || e.target.closest('.delete-note-btn')) {
+                    return;
+                }
+                openFullscreenNote(note);
+            });
+        }
+        
+        container.appendChild(card);
+    });
+    
+    // Copy button handler
+    document.querySelectorAll('.copy-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const found = notes.find(n => n.id === id);
+            if (found && found.content) {
+                navigator.clipboard.writeText(found.content || "");
+                showToast("कंटेंट कॉपी हो गया");
+            }
+        });
+    });
+    
+    // Save empty note button handler - CREATE NEW NOTE, keep empty note empty
+    document.querySelectorAll('.save-empty-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const found = notes.find(n => n.id === id);
+            if (found && isEmptyNote(found)) {
+                const titleInput = document.getElementById(`emptyNoteTitle_${id}`);
+                const textarea = document.getElementById(`emptyNoteText_${id}`);
+                const newContent = textarea.value.trim();
+                const newTitle = titleInput.value.trim();
+                
+                if (newContent) {
+                    const finalTitle = newTitle ? newTitle : (newContent.split(/\r?\n/)[0].substring(0, 40) || "नया नोट");
+                    const newNote = {
+                        id: Date.now() + '_' + Math.random(),
+                        folderId: currentFolderId,
+                        title: finalTitle,
+                        content: newContent
+                    };
+                    notes.push(newNote);
+                    saveToLocal();
+                    titleInput.value = '';
+                    textarea.value = '';
+                    renderNotes();
+                    showToast("✅ नया नोट सेव हो गया");
+                } else {
+                    showToast("कुछ लिखें या पेस्ट करें");
+                }
+            }
+        });
+    });
+    
+    // Paste to empty note button handler
+document.querySelectorAll('.paste-to-empty-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute('data-id');
+        const found = notes.find(n => n.id === id);
+        if (found && isEmptyNote(found)) {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text && text.trim()) {
+                    const textarea = document.getElementById(`emptyNoteText_${id}`);
+                    textarea.value = text;
+                    textarea.focus();
+                    showToast("📋 पेस्ट हो गया");
+                } else {
+                    showToast("क्लिपबोर्ड खाली है");
+                }
+            } catch (err) {
+                const textarea = document.getElementById(`emptyNoteText_${id}`);
+                textarea.focus();
+                showToast("📋 Ctrl+V दबाएं (अनुमति आवश्यक)");
+            }
+        }
+    });
+});
+    
+    // Edit button handler
+    document.querySelectorAll('.edit-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const found = notes.find(n => n.id === id);
+            if (found) openEditModal(found);
+        });
+    });
+    
+    // Delete button handler
+    document.querySelectorAll('.delete-note-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = btn.getAttribute('data-id');
+            const found = notes.find(n => n.id === id);
+            if (confirm("नोट हटाएं?")) {
+                notes = notes.filter(n => n.id !== id);
+                saveToLocal();
+                renderNotes();
+                showToast("नोट हटा दिया गया");
+            }
+        });
+    });
+}
+
+    // COMMENT 11 : OPEN NOTE IN FULLSCREEN - SAVE ONLY WITH CTRL+ENTER
+function openFullscreenNote(note) {
+    const fullDiv = document.createElement('div');
+    fullDiv.className = 'fullscreen-modal';
+    
+    fullDiv.innerHTML = `
+        <div class="fullscreen-header">
+            <input type="text" id="fullscreenTitle" value="${escapeHtml(note.title || "बिना शीर्षक")}" placeholder="शीर्षक" style="font-size:1.2rem; font-weight:600; border:none; background:transparent; width:70%; outline:none; border-bottom:1px solid #ddd; padding:4px 0;">
+            <button class="fullscreen-close"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="fullscreenContent" contenteditable="true" style="width:100%; min-height:70%; font-size:1rem; line-height:1.6; outline:none; white-space:pre-wrap; word-break:break-word; color:#2c241a; padding:8px 0;">${escapeHtml(note.content || "")}</div>
+    `;
+    
+    document.body.appendChild(fullDiv);
+    document.body.style.overflow = 'hidden';
+    
+    const closeBtn = fullDiv.querySelector('.fullscreen-close');
+    const titleInput = fullDiv.querySelector('#fullscreenTitle');
+    const contentDiv = fullDiv.querySelector('#fullscreenContent');
+    
+    // Save function
+    function saveNote() {
+        const newTitle = titleInput.value.trim() || "नोट";
+        const newContent = contentDiv.innerText || contentDiv.textContent || "";
+        note.title = newTitle;
+        note.content = newContent;
+        saveToLocal();
+        renderNotes();
+        fullDiv.remove();
+        document.body.style.overflow = '';
+        showToast("नोट सेव हो गया (Ctrl+Enter)");
+    }
+    
+    closeBtn.onclick = () => {
+        fullDiv.remove();
+        document.body.style.overflow = '';
+    };
+    
+    // Ctrl+Enter से save
+    contentDiv.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            saveNote();
+        }
+    });
+    
+    titleInput.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            saveNote();
+        }
+    });
+    
+    fullDiv.addEventListener('click', (e) => {
+        if (e.target === fullDiv) {
+            fullDiv.remove();
+            document.body.style.overflow = '';
+        }
+    });
+}
+
+    // COMMENT 12 : EDIT NOTE MODAL (for regular notes only)
+    function openEditModal(noteObj) {
+        if (isEmptyNote(noteObj)) {
+            // Empty note should be handled by fullscreen editor
+            openFullscreenNote(noteObj);
+            return;
+        }
+        
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-mask';
+        modalDiv.innerHTML = `
+            <div class="modal-card">
+                <h3><i class="fas fa-pen"></i> संपादित करें</h3>
+                <input type="text" id="editTitleModal" value="${escapeHtml(noteObj.title)}" placeholder="शीर्षक">
+                <textarea id="editContentModal" rows="4" placeholder="नोट लिखें...">${escapeHtml(noteObj.content)}</textarea>
+                <div class="modal-actions">
+                    <button id="saveEditModalBtn" style="background:#ffd966;">सेव</button>
+                    <button id="closeModalBtn" style="background:#e0d6c8;">रद्द</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        const saveBtn = modalDiv.querySelector('#saveEditModalBtn');
+        const closeBtn = modalDiv.querySelector('#closeModalBtn');
+        saveBtn.onclick = () => {
+            const newTitle = modalDiv.querySelector('#editTitleModal').value.trim() || "नोट";
+            const newContent = modalDiv.querySelector('#editContentModal').value;
+            noteObj.title = newTitle;
+            noteObj.content = newContent;
+            saveToLocal();
+            renderNotes();
+            modalDiv.remove();
+            showToast("अपडेट हो गया");
+        };
+        closeBtn.onclick = () => modalDiv.remove();
+    }
+
+    // COMMENT 13 : CREATE NEW FOLDER (simple prompt, no extra buttons)
+    function createNewFolder() {
+        let name = prompt("नए फोल्डर का नाम लिखें");
+        if(name && name.trim()) {
+            const newId = 'f_' + Date.now();
+            folders.push({ id: newId, name: name.trim() });
+            currentFolderId = newId;
+            ensureEmptyNoteForAllFolders();
+            saveToLocal();
+            fullRender();
+            showToast("नया फोल्डर बन गया");
+        }
+    }
+
+    // COMMENT 14 : MASTER RENDER FUNCTION
+    function fullRender() {
+        renderFolders();
+        renderNotes();
+    }
+
+    // COMMENT 15 : ADD NEW FOLDER BUTTON (MINIMAL, ON THE FOLDER STRIP)
+    function addNewFolderButton() {
+        const container = document.getElementById('foldersList');
+        const addBtn = document.createElement('span');
+        addBtn.innerText = '+';
+        addBtn.style.cssText = 'display: inline-flex; align-items: center; justify-content: center; background: transparent; padding: 2px 8px; font-size: 1rem; cursor: pointer; color: #5c472f; font-weight: 600;';
+        addBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createNewFolder();
+        });
+        container.appendChild(addBtn);
+    }
+
+    // COMMENT 16 : INITIALIZE APP - LOAD DATA, RENDER, ADD FOLDER BUTTON
+    loadFromLocal();
+    fullRender();
+</script>
+</body>
+</html>
