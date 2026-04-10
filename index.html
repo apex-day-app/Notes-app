@@ -508,27 +508,29 @@ function renderNotes() {
         });
     });
     
-    // Paste to empty note button handler
+    // Paste to empty note button handler - works in WebView (1 click)
 document.querySelectorAll('.paste-to-empty-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const id = btn.getAttribute('data-id');
         const found = notes.find(n => n.id === id);
         if (found && isEmptyNote(found)) {
-            try {
-                const text = await navigator.clipboard.readText();
-                if (text && text.trim()) {
-                    const textarea = document.getElementById(`emptyNoteText_${id}`);
-                    textarea.value = text;
-                    textarea.focus();
-                    showToast("📋 पेस्ट हो गया");
-                } else {
-                    showToast("क्लिपबोर्ड खाली है");
+            const textarea = document.getElementById(`emptyNoteText_${id}`);
+            
+            // Focus the textarea
+            textarea.focus();
+            
+            // Method 1: Try execCommand (works in WebView)
+            if (document.execCommand('paste')) {
+                // Success - text is now pasted
+                showToast("📋 पेस्ट हो गया");
+            } else {
+                // Method 2: Fallback to prompt
+                const pastedText = prompt("📋 टेक्स्ट पेस्ट करें (Ctrl+V दबाएं):", "");
+                if (pastedText && pastedText.trim()) {
+                    textarea.value = pastedText;
+                    showToast("✅ पेस्ट हो गया");
                 }
-            } catch (err) {
-                const textarea = document.getElementById(`emptyNoteText_${id}`);
-                textarea.focus();
-                showToast("📋 Ctrl+V दबाएं (अनुमति आवश्यक)");
             }
         }
     });
